@@ -54,14 +54,34 @@ react2shell-lab/
 - curl ou httpie
 - Netcat (optionnel, pour les reverse shells)
 
-### Étape 1 : Cloner et Construire
+### Démarrage Rapide (Recommandé)
+
+Le script `lab.sh` facilite la gestion du laboratoire.
 
 ```bash
-# Cloner le laboratoire (ou extraire l'archive)
-cd react2shell-lab
+# Rendre le script exécutable
+chmod +x lab.sh
 
-# Construire et démarrer l'environnement vulnérable
+# Démarrer le laboratoire
+./lab.sh start
+```
+
+### Méthodes Alternatives
+
+#### Option A : Utilisation de Docker Compose
+```bash
 docker-compose up --build -d
+
+# Vérifier que l'application fonctionne
+curl -s http://localhost:3000 | head -5
+```
+
+#### Option B : Démarrage manuel
+```bash
+cd vulnerable-app
+npm install
+npm run build
+npm run start
 
 # Vérifier que l'application fonctionne
 curl -s http://localhost:3000 | head -5

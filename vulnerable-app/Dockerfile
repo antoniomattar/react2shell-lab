@@ -10,6 +10,9 @@ LABEL warning="INTENTIONALLY VULNERABLE - DO NOT DEPLOY TO PRODUCTION"
 # Create app directory
 WORKDIR /app
 
+# Create the secret flag
+RUN echo "ENSIMAG{R34CT_S3RV3R_C0MP0N3NTS_RCE}" > /flag.txt
+
 # Copy package files
 COPY package.json ./
 

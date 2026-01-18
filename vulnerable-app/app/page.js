@@ -1,7 +1,9 @@
 // app/page.js
-// Main page component - demonstrates the app is running
-// Note: No explicit Server Actions are defined, yet the app is vulnerable
-// because the RSC Flight protocol endpoint is exposed by default
+// Composant de la page principale - démontre que l'application fonctionne
+// Note : Aucune Server Action explicite n'est définie, pourtant l'application est vulnérable
+// car le endpoint du protocole RSC Flight est exposé par défaut
+
+import FlagForm from './FlagForm';
 
 export default function Home() {
   return (
@@ -20,7 +22,7 @@ export default function Home() {
           color: '#e94560',
           marginTop: 0 
         }}>
-          ⚠️ CVE-2025-55182 Vulnerable Lab
+          ⚠️ Labo Vulnérable CVE-2025-55182
         </h1>
         
         <div style={{
@@ -30,32 +32,50 @@ export default function Home() {
           marginBottom: '20px'
         }}>
           <h2 style={{ color: '#ffc107', margin: '0 0 10px 0' }}>
-            🚨 WARNING
+            🚨 ATTENTION
           </h2>
           <p style={{ margin: 0 }}>
-            This application is <strong>intentionally vulnerable</strong> to 
-            CVE-2025-55182 (React2Shell). It is designed for security research 
-            and education purposes only.
+            Cette application est <strong>intentionnellement vulnérable</strong> à la 
+            CVE-2025-55182 (React2Shell). Elle est conçue uniquement à des fins de recherche 
+            en sécurité et d'éducation.
           </p>
         </div>
 
-        <h2 style={{ color: '#00d9ff' }}>Environment Details</h2>
+        <div style={{
+          border: '2px dashed #00d9ff',
+          padding: '20px',
+          borderRadius: '8px',
+          marginBottom: '30px',
+          backgroundColor: 'rgba(0, 217, 255, 0.1)'
+        }}>
+          <h2 style={{ color: '#00d9ff', marginTop: 0 }}>🎯 Votre Mission</h2>
+          <p style={{ fontSize: '1.1em' }}>
+            Un fichier secret nommé <code>flag.txt</code> a été caché à la racine du système de fichiers du conteneur (<code>/flag.txt</code>).
+          </p>
+          <p>
+            <strong>Objectif :</strong> Utilisez la vulnérabilité RCE pour lire le contenu de ce fichier !
+          </p>
+          
+          <FlagForm />
+        </div>
+
+        <h2 style={{ color: '#00d9ff' }}>Détails de l'Environnement</h2>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <tbody>
             <tr>
               <td style={{ padding: '8px', borderBottom: '1px solid #333' }}>
-                <strong>Next.js Version</strong>
+                <strong>Version Next.js</strong>
               </td>
               <td style={{ padding: '8px', borderBottom: '1px solid #333', color: '#e94560' }}>
-                16.0.6 (VULNERABLE)
+                16.0.6 (VULNÉRABLE)
               </td>
             </tr>
             <tr>
               <td style={{ padding: '8px', borderBottom: '1px solid #333' }}>
-                <strong>React Version</strong>
+                <strong>Version React</strong>
               </td>
               <td style={{ padding: '8px', borderBottom: '1px solid #333', color: '#e94560' }}>
-                19.2.0 (VULNERABLE)
+                19.2.0 (VULNÉRABLE)
               </td>
             </tr>
             <tr>
@@ -68,26 +88,26 @@ export default function Home() {
             </tr>
             <tr>
               <td style={{ padding: '8px', borderBottom: '1px solid #333' }}>
-                <strong>CVSS Score</strong>
+                <strong>Score CVSS</strong>
               </td>
               <td style={{ padding: '8px', borderBottom: '1px solid #333', color: '#e94560' }}>
-                10.0 (Critical)
+                10.0 (Critique)
               </td>
             </tr>
             <tr>
               <td style={{ padding: '8px' }}>
-                <strong>Router Type</strong>
+                <strong>Type de Routeur</strong>
               </td>
               <td style={{ padding: '8px' }}>
-                App Router (RSC enabled)
+                App Router (RSC activé)
               </td>
             </tr>
           </tbody>
         </table>
 
-        <h2 style={{ color: '#00d9ff', marginTop: '30px' }}>Quick Test</h2>
+        <h2 style={{ color: '#00d9ff', marginTop: '30px' }}>Test Rapide</h2>
         <p>
-          To verify this application is vulnerable, run the exploit script:
+          Pour vérifier que cette application est vulnérable, lancez le script d'exploit :
         </p>
         <pre style={{
           backgroundColor: '#0f0f23',
@@ -98,25 +118,25 @@ export default function Home() {
         }}>
 {`python3 exploit/exploit.py http://localhost:3000 "id"
 
-# Expected output:
-# [+] VULNERABLE! Command output:
+# Résultat attendu :
+# [+] VULNÉRABLE ! Sortie de la commande :
 # uid=0(root) gid=0(root) groups=0(root)...`}
         </pre>
 
-        <h2 style={{ color: '#00d9ff', marginTop: '30px' }}>Key Points</h2>
+        <h2 style={{ color: '#00d9ff', marginTop: '30px' }}>Points Clés</h2>
         <ul style={{ lineHeight: '1.8' }}>
           <li>
-            <strong>No Server Actions Required:</strong> The vulnerability exists 
-            even without explicit Server Actions defined
+            <strong>Pas de Server Actions Requises :</strong> La vulnérabilité existe 
+            même sans Server Actions explicites définies
           </li>
           <li>
-            <strong>Default Configuration:</strong> App Router enables RSC by default
+            <strong>Configuration par Défaut :</strong> App Router active RSC par défaut
           </li>
           <li>
-            <strong>Unauthenticated:</strong> No login or session required to exploit
+            <strong>Non Authentifié :</strong> Pas de connexion ou de session requise pour exploiter
           </li>
           <li>
-            <strong>Full RCE:</strong> Arbitrary command execution as the Node.js process user
+            <strong>RCE Totale :</strong> Exécution de commande arbitraire en tant qu'utilisateur du processus Node.js
           </li>
         </ul>
       </div>
@@ -127,9 +147,9 @@ export default function Home() {
         color: '#666'
       }}>
         <p>
-          For educational and authorized security testing only.
+          Pour éducation et tests de sécurité autorisés uniquement.
           <br />
-          See <code>report.md</code> for technical analysis.
+          Voir <code>report.md</code> pour l'analyse technique.
         </p>
       </footer>
     </main>
