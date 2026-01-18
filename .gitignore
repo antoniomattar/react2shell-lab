@@ -9,3 +9,9 @@ exploit/__pycache__/*
 
 # Other
 .DS_Store
+
+# LaTeX
+latex_report/*.log
+latex_report/*.aux
+latex_report/*.out
+latex_report/*.toc

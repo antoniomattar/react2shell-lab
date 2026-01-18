@@ -1,0 +1,309 @@
+\documentclass[a4paper,11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{geometry}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric, arrows, positioning, fit, backgrounds, shadows, calc}
+
+% Configuration de la page
+\geometry{hmargin=2.5cm,vmargin=2.5cm}
+
+% Configuration des hyperliens
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=magenta,      
+    urlcolor=cyan,
+}
+
+% Configuration des listings de code
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=2
+}
+\lstset{style=mystyle}
+
+% En-tête et pied de page standard
+\pagestyle{plain}
+
+\title{
+    \vspace{2cm}
+    \textbf{\huge Analyse et Exploitation de la CVE-2025-55182 (React2Shell)} \\
+    \vspace{1cm}
+    \large Devoir 59589 - Sécurité des Systèmes d'Information
+}
+\author{Étudiants ENSIMAG}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+\thispagestyle{empty}
+\newpage
+
+\tableofcontents
+\newpage
+
+\section{Description de la Vulnérabilité}
+
+\subsection{Présentation}
+La CVE-2025-55182, surnommée \textbf{"React2Shell"}, est une vulnérabilité critique d'exécution de code à distance (RCE) affectant les versions récentes de React (19.x) et Next.js (15.x/16.x) utilisant l'architecture "App Router". Elle a obtenu un score CVSS de \textbf{10.0} (Critique).
+
+\subsection{Origine et Fonctionnement}
+La faille réside dans le mécanisme de désérialisation du protocole \textbf{React Server Components (RSC) Flight}.
+
+\begin{itemize}
+    \item \textbf{Contexte :} Next.js permet aux clients d'envoyer des objets sérialisés au serveur (pour les Server Actions par exemple).
+    \item \textbf{Défaut :} Le désérialiseur serveur ne vérifie pas correctement les types des objets reçus, permettant une "Pollution de Prototype" ou l'injection d'objets malveillants lors de la reconstruction de l'arbre de composants.
+    \item \textbf{Exploitation :} Un attaquant peut envoyer un payload JSON spécialement conçu qui, une fois désérialisé, incite le serveur à :
+    \begin{enumerate}
+        \item Charger des modules arbitraires (via `module.require`).
+        \item Exécuter des commandes système (via `child\_process.execSync`).
+    \end{enumerate}
+\end{itemize}
+
+Ce processus se déroule \textbf{avant} toute authentification applicative, rendant tout serveur exposé immédiatement vulnérable.
+
+\newpage
+\section{Architecture et Analyse}
+
+\subsection{Architecture Typique Vulnérable}
+L'architecture cible est une application web moderne basée sur Next.js, souvent déployée via Docker ou Kubernetes. Le schéma ci-dessous illustre l'infrastructure réseau et le flux de l'attaque.
+
+\begin{center}
+\begin{tikzpicture}[node distance=1.5cm and 1cm, auto, >=latex', thick]
+    % Styles
+    \tikzstyle{block} = [rectangle, draw, fill=blue!10, text width=2.5cm, text centered, rounded corners, minimum height=1.5cm, drop shadow]
+    \tikzstyle{actor} = [circle, draw, fill=red!20, text width=1.5cm, text centered, minimum height=1.5cm, drop shadow]
+    \tikzstyle{container} = [rectangle, draw, dashed, fill=gray!5, inner sep=0.8cm, rounded corners, label=above:\textbf{Serveur Docker / Kubernetes}]
+    
+    % Nodes
+    \node[actor] (attacker) {Attaquant};
+    
+    % Internal components positioned relatively
+    \node[block, right=2.5cm of attacker, fill=green!10] (nginx) {Reverse Proxy\\(Nginx)};
+    \node[block, right=1.5cm of nginx, fill=blue!15] (nextjs) {Next.js App\\(App Router)};
+    \node[block, right=1.5cm of nextjs, fill=yellow!10] (fs) {Système de\\Fichiers};
+    
+    % Container background
+    \begin{pgfonlayer}{background}
+        \node[container, fit=(nginx) (nextjs) (fs)] (box) {};
+    \end{pgfonlayer}
+    
+    % Arrows with better labelling spacing
+    \draw[->, red, very thick] (attacker) -- node[above, font=\footnotesize, text width=2cm, align=center] {1. Payload RSC\\(Malveillant)} (nginx);
+    \draw[->, red, very thick] (nginx) -- node[above, font=\footnotesize] {2. Forward} (nextjs);
+    \draw[->, red, very thick] (nextjs) -- node[above, font=\footnotesize] {3. RCE} (fs);
+    
+    % Return paths curved to avoid overlap
+    \draw[->, blue, dashed] (nextjs.south) to[bend left=45] node[below, font=\footnotesize] {4. Output} (nginx.south);
+    \draw[->, blue, dashed] (nginx.south) to[bend left=45] node[below, font=\footnotesize] {5. Réponse HTTP} (attacker.south);
+    
+    % Vulnerability marker
+    \node[above=0.1cm of nextjs, text=red!80!black, font=\bfseries\small] {Vulnérabilité ici};
+\end{tikzpicture}
+\end{center}
+
+\subsection{Flux d'Exploitation (Détail de la Vulnérabilité)}
+Le schéma suivant détaille le processus interne de la désérialisation défaillante.
+
+\begin{center}
+\begin{tikzpicture}[node distance=1.5cm, auto, >=stealth]
+    % Styles
+    \tikzstyle{process} = [rectangle, draw, fill=orange!10, text width=4cm, text centered, minimum height=1cm, rounded corners]
+    \tikzstyle{decision} = [diamond, draw, fill=blue!10, text width=2.5cm, text centered, inner sep=0pt]
+    \tikzstyle{line} = [draw, -latex', thick]
+    
+    \node[process] (input) {Réception Payload JSON\\(Client RSC)};
+    \node[process, below=of input] (deser) {Désérialisation React\\(Server Component)};
+    \node[decision, below=of deser] (check) {Vérification Types?};
+    \node[process, right=1.5cm of check, fill=red!20] (eval) {Reconstruction Objet +\\Exécution Code (RCE)};
+    \node[process, below=1.5cm of check, fill=green!20] (safe) {Rendu Composant Sûr};
+    
+    % Paths
+    \path[line] (input) -- (deser);
+    \path[line] (deser) -- (check);
+    \path[line] (check) -- node[left] {OUI (Patché)} (safe);
+    \path[line] (check) -- node[above] {NON (Vulnérable)} (eval);
+    \path[line, dashed, red] (eval) |- (safe.east);
+    
+    % Context info
+    \node[right=0.5cm of input, text width=4cm, font=\footnotesize, align=left] {En-tête: \texttt{Next-Action}\\Contenu: \texttt{module.require}};
+
+\end{tikzpicture}
+\end{center}
+
+\subsection{Détails de l'Infrastructure}
+\begin{itemize}
+    \item \textbf{Machines concernées :} Le serveur hébergeant l'application Node.js.
+    \item \textbf{Services associés :} 
+    \begin{itemize}
+        \item \textbf{Next.js Server :} Gère le rendu (SSR) et les requêtes API. C'est ici que la désérialisation a lieu.
+        \item \textbf{Reverse Proxy (Optionnel) :} Peut ne pas filtrer les requêtes RSC car elles ressemblent à du trafic légitime.
+    \end{itemize}
+    \item \textbf{Réseau :} L'application est généralement exposée sur le port 3000 (interne) ou 80/443 (externe).
+\end{itemize}
+
+\newpage
+\section{Analyse de la Cible de Sécurité}
+
+Une analyse formelle selon la définition de Cible de Sécurité (Security Target).
+
+\subsection{Biens (Assets) à Protéger}
+\begin{enumerate}
+    \item \textbf{Intégrité du Serveur :} Le système d'exploitation hôte ou le conteneur ne doit pas être modifié par des tiers non autorisés.
+    \item \textbf{Confidentialité des Données :} Fichiers de configuration (\texttt{.env}, clés API), bases de données, code source.
+    \item \textbf{Disponibilité du Service :} L'application doit rester accessible aux utilisateurs légitimes (risque de Déni de Service via RCE).
+\end{enumerate}
+
+\subsection{Menaces (Threats)}
+\begin{itemize}
+    \item \textbf{T.RCE (Remote Code Execution) :} Un attaquant exécute des commandes arbitraires avec les privilèges du processus Node.js.
+    \item \textbf{T.EXFIL (Exfiltration) :} Vol de données sensibles (clés AWS, mots de passe BDD) via lecture de fichiers ou variables d'environnement.
+    \item \textbf{T.LATERAL (Mouvement Latéral) :} Utilisation du serveur compromis comme pivot pour attaquer le réseau interne.
+\end{itemize}
+
+\subsection{Fonctions de Sécurité (Security Functions)}
+\begin{itemize}
+    \item \textbf{SF.DESERIALIZATION (Déficiente) :} Le mécanisme de désérialisation RSC doit valider strictement les types d'objets entrants. \textit{(C'est la fonction défaillante ici)}.
+    \item \textbf{SF.ISOLATION :} Utilisation de conteneurs (Docker) et d'utilisateurs non-privilégiés pour limiter l'impact d'une compromission.
+    \item \textbf{SF.FILTERING :} WAF pour bloquer les payloads suspects contenant des chaînes comme `child_process` ou `__proto__`.
+\end{itemize}
+
+\newpage
+\section{Contre-mesures Administrateur}
+
+En tant qu'administrateur système ou DevOps, voici les dispositions à prendre pour limiter ou éviter les conséquences.
+
+\subsection{Actions Correctives (Patching)}
+La mesure la plus efficace est la mise à jour des composants affectés.
+\begin{itemize}
+    \item \textbf{Next.js :} Mettre à jour vers la version \textbf{16.0.7} ou supérieure (ou 15.2.4+).
+    \item \textbf{React :} Utiliser les versions patchées \textbf{19.0.1}, \textbf{19.1.2} ou \textbf{19.2.1}.
+\end{itemize}
+
+\subsection{Limitation de l'Impact (Défense en Profondeur)}
+\begin{enumerate}
+    \item \textbf{Principe de Moindre Privilège :}
+    \begin{itemize}
+        \item Ne jamais faire tourner le processus Node.js en \texttt{root}.
+        \item Créer un utilisateur dédié (ex: `node`) dans le Dockerfile.
+    \end{itemize}
+    \item \textbf{Système de Fichiers en Lecture Seule :}
+    \begin{itemize}
+        \item Monter le rootfs en \texttt{read-only} pour empêcher l'installation de malwares ou backdoors persistantes.
+    \end{itemize}
+    \item \textbf{Segmentation Réseau :}
+    \begin{itemize}
+        \item Isoler le conteneur applicatif dans un VLAN ou un réseau Docker restreint.
+        \item Bloquer les connexions sortantes (egress filtering) pour empêcher les reverse shells.
+    \end{itemize}
+\end{enumerate}
+
+\subsection{Surveillance et Filtrage}
+\begin{itemize}
+    \item \textbf{WAF :} Configurer des règles pour bloquer les requêtes contenant des signatures d'exploitation RSC (ex: en-tête `Next-Action` suspect couplé à des mots clés JSON malveillants).
+    \item \textbf{Logging :} Surveiller les journaux pour détecter des processus enfants inattendus (`sh`, `bash`, `curl`) lancés par Node.js.
+\end{itemize}
+
+\newpage
+\section{Expérimentation}
+
+Nous avons mis en place un laboratoire complet pour reproduire cette faille.
+
+\subsection{Mise en Oeuvre du Laboratoire}
+L'environnement utilise Docker Compose pour orchestrer :
+\begin{itemize}
+    \item \textbf{vulnerable-app :} Un conteneur Next.js 16.0.6 (vulnérable).
+    \item \textbf{exploit-client :} Une machine attaquante avec les scripts Python.
+\end{itemize}
+
+\begin{lstlisting}[language=bash, caption=Démarrage du Lab]
+# Démarrage via le script fourni
+./lab.sh start
+
+# Vérification
+curl -s http://localhost:3000
+\end{lstlisting}
+
+\subsection{Scénario d'Exploitation}
+
+\subsubsection{Objectif}
+Lire le fichier secret \texttt{/flag.txt} situé sur le serveur ("Capture the Flag"), puis soumettre le résultat dans l'interface web prévue à cet effet.
+
+\subsubsection{Exécution de l'Attaque}
+Nous utilisons un script Python (`exploit.py`) qui forge une requête HTTP POST multipart.
+
+\begin{lstlisting}[language=bash, caption=Commande d'exploitation]
+python3 exploit/exploit.py http://localhost:3000 "cat /flag.txt"
+\end{lstlisting}
+
+\subsubsection{Résultat}
+Le serveur exécute la commande et renvoie le résultat dans la réponse d'erreur RSC.
+
+\begin{verbatim}
+[*] Target: http://localhost:3000
+[*] Command: cat /flag.txt
+[*] Sending exploit payload...
+
+[+] VULNERABLE! Command output:
+ENSIMAG{R34CT_S3RV3R_C0MP0N3NTS_RCE}
+\end{verbatim}
+
+\subsubsection{Validation}
+L'utilisateur copie ensuite ce flag (`ENSIMAG{...}`) dans le formulaire de l'application web pour valider le succès de l'opération.
+
+\begin{center}
+    \fbox{
+        \begin{minipage}{0.8\textwidth}
+            \centering
+            \textbf{Illustration de l'Interface Web} \\
+            \includegraphics[width=\textwidth]{images/experimentation.png}
+        \end{minipage}
+    }
+\end{center}
+
+\newpage
+\section{Glossaire et Références}
+
+\subsection{Glossaire}
+\begin{itemize}
+    \item \textbf{RSC (React Server Components)} : Composants React rendus exclusivement sur le serveur.
+    \item \textbf{RCE (Remote Code Execution)} : Capacité d'un attaquant à exécuter du code arbitraire sur une machine distante.
+    \item \textbf{SSR (Server-Side Rendering)} : Génération du HTML côté serveur.
+    \item \textbf{CVE (Common Vulnerabilities and Exposures)} : Liste publique des failles de sécurité.
+\end{itemize}
+
+\subsection{Références}
+\begin{enumerate}
+    \item \textbf{NIST NVD}, "CVE-2025-55182 Detail", \url{https://nvd.nist.gov/vuln/detail/CVE-2025-55182}
+    \item \textbf{Wiz Research}, "React2Shell: Pwning Next.js servers remotely", \url{https://www.wiz.io/blog/nextjs-cve-2025-55182-react2shell-deep-dive}
+    \item \textbf{React Team}, "Security Advisory: RSC Payload Deserialization", \url{https://react.dev/security}
+    \item \textbf{Projet GitHub du Lab}, \textit{Code source fourni avec ce rapport}.
+\end{enumerate}
+
+\end{document}
