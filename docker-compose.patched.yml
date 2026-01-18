@@ -7,8 +7,8 @@ services:
   # Patched Next.js Application
   patched-app:
     build:
-      context: ./mitigation
-      dockerfile: Dockerfile.patched
+      context: .
+      dockerfile: mitigation/Dockerfile.patched
     container_name: react2shell-patched
     ports:
       - "127.0.0.1:3001:3000"

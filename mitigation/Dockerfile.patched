@@ -9,14 +9,14 @@ LABEL description="Patched Next.js app - CVE-2025-55182 FIXED"
 WORKDIR /app
 
 # Copy patched package.json
-COPY package.json.patched ./package.json
+COPY mitigation/package.json.patched ./package.json
 
 # Install PATCHED versions
 RUN npm install --legacy-peer-deps
 
 # Copy application source (reuse from vulnerable-app)
-COPY ../vulnerable-app/next.config.mjs ./
-COPY ../vulnerable-app/app ./app
+COPY vulnerable-app/next.config.mjs ./
+COPY vulnerable-app/app ./app
 
 # Build
 RUN npm run build
