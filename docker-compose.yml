@@ -1,0 +1,58 @@
+# CVE-2025-55182 (React2Shell) Lab Environment
+# WARNING: This is intentionally vulnerable - DO NOT expose to internet
+
+services:
+  # Vulnerable Next.js Application
+  vulnerable-app:
+    build:
+      context: ./vulnerable-app
+      dockerfile: Dockerfile
+    container_name: react2shell-vulnerable
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      - NODE_ENV=production
+      - SECRET_API_KEY=sk-demo-vulnerable-key-12345
+      - DATABASE_URL=postgresql://admin:password@db:5432/app
+      - AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE
+      - AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+    networks:
+      - vuln-network
+    restart: unless-stopped
+    labels:
+      - "com.security.warning=VULNERABLE - CVE-2025-55182"
+      - "com.security.lab=react2shell"
+
+  # Optional: Attacker machine with tools pre-installed
+  attacker:
+    build:
+      context: ./exploit
+      dockerfile: Dockerfile.attacker
+    container_name: react2shell-attacker
+    stdin_open: true
+    tty: true
+    volumes:
+      - ./exploit:/tools:ro
+    networks:
+      - vuln-network
+    depends_on:
+      - vulnerable-app
+    profiles:
+      - with-attacker
+
+networks:
+  vuln-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.29.0.0/16
+
+# Usage:
+# Start vulnerable app only:
+#   docker-compose up -d
+#
+# Start with attacker container:
+#   docker-compose --profile with-attacker up -d
+#
+# Access attacker shell:
+#   docker exec -it react2shell-attacker /bin/bash

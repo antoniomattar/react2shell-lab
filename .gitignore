@@ -1,0 +1,11 @@
+# Python cache
+__pycache__
+*.pyc
+
+# Exploit cache
+exploit/__pycache__
+exploit/*.pyc
+exploit/__pycache__/*
+
+# Other
+.DS_Store

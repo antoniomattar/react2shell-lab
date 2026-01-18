@@ -1,0 +1,26 @@
+# Dockerfile for PATCHED Next.js Application
+# This demonstrates the fix for CVE-2025-55182
+
+FROM node:20-alpine
+
+LABEL maintainer="Security Lab"
+LABEL description="Patched Next.js app - CVE-2025-55182 FIXED"
+
+WORKDIR /app
+
+# Copy patched package.json
+COPY package.json.patched ./package.json
+
+# Install PATCHED versions
+RUN npm install --legacy-peer-deps
+
+# Copy application source (reuse from vulnerable-app)
+COPY ../vulnerable-app/next.config.mjs ./
+COPY ../vulnerable-app/app ./app
+
+# Build
+RUN npm run build
+
+EXPOSE 3000
+
+CMD ["npm", "run", "start"]

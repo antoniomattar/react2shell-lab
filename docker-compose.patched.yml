@@ -1,0 +1,33 @@
+version: '3.8'
+
+# CVE-2025-55182 - PATCHED Environment for Comparison
+# This demonstrates the fix applied
+
+services:
+  # Patched Next.js Application
+  patched-app:
+    build:
+      context: ./mitigation
+      dockerfile: Dockerfile.patched
+    container_name: react2shell-patched
+    ports:
+      - "127.0.0.1:3001:3000"
+    environment:
+      - NODE_ENV=production
+    networks:
+      - secure-network
+    restart: unless-stopped
+    labels:
+      - "com.security.status=PATCHED"
+      - "com.security.lab=react2shell"
+
+networks:
+  secure-network:
+    driver: bridge
+
+# Usage:
+# docker-compose -f docker-compose.patched.yml up -d
+#
+# Test that exploit no longer works:
+# python3 exploit/exploit.py http://localhost:3001 "id"
+# Expected: Error or safe response (no RCE)

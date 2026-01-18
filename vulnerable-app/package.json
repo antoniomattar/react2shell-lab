@@ -1,0 +1,35 @@
+{
+  "name": "cve-2025-55182-vulnerable-app",
+  "version": "1.0.0",
+  "description": "Intentionally vulnerable Next.js app for CVE-2025-55182 security research",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "next": "16.0.6",
+    "react": "19.2.0",
+    "react-dom": "19.2.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "cve-2025-55182",
+    "react2shell",
+    "security-research",
+    "vulnerable"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/security-lab/cve-2025-55182-lab"
+  },
+  "bugs": {
+    "url": "https://github.com/security-lab/cve-2025-55182-lab/issues"
+  },
+  "_comment": "WARNING: These versions are VULNERABLE to CVE-2025-55182. DO NOT use in production!"
+}
